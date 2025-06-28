@@ -4,7 +4,7 @@ from machine import Pin
 import ws2812b
 
 NUM_LEDS = 12
-DATA_PIN = 21
+DATA_PIN = 28
 
 leds = ws2812b.ws2812b(NUM_LEDS, 0, DATA_PIN)
 
