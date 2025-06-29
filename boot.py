@@ -5,8 +5,8 @@ import ws2812b
 # === Config ===
 PIN_NUM = 28
 MAX_ACTIVE = 2
-REFRESH_INTERVAL = 0.05  # actualisation globale
-GLOBAL_FLASH_INTERVAL = (10, 10)  # en secondes
+REFRESH_INTERVAL = 0.05  # actualisation globale (20 FPS)
+GLOBAL_FLASH_INTERVAL = (120, 240)  # secondes: (min, max)
 
 COLORS = [
     (255, 0, 0), (0, 255, 0), (0, 0, 255),
@@ -14,7 +14,7 @@ COLORS = [
     (255, 255, 0), (0, 255, 255)
 ]
 
-# === Fonction de combinaison des couches ===
+# === Fonction de composition des couches ===
 def MyEt(*colors):
     r = max((c[0] for c in colors), default=0)
     g = max((c[1] for c in colors), default=0)
@@ -43,7 +43,7 @@ class LEDBlock:
         self.composition_fn = MyEt
 
     def set_layer(self, name, color_list):
-        # Ajoute ou met à jour une couche (fade, flash, spin...)
+        # ajoute ou met à jour une couche (fade, flash, spin...)
         self.active_layers[name] = color_list
 
     def clear_layer(self, name):
@@ -51,9 +51,8 @@ class LEDBlock:
             del self.active_layers[name]
 
     def compute_pixels(self, buffer):
-        # Calcule la couleur finale pixel par pixel via MyEt de toutes les couches
+        # calcule la couleur finale par pixel via MyEt
         for i, pix in enumerate(self.indices):
-            # collecter toutes les couches pour ce pixel
             layers = [layer[i] for layer in self.active_layers.values() if i < len(layer)]
             r, g, b = self.composition_fn(*layers)
             buffer[pix] = (r, g, b)
@@ -68,7 +67,7 @@ class LEDBlock:
             self.clear_layer('fade')
 
     async def full_light(self, color):
-        # Flash doux via fade in/out
+        # flash doux via fade in/out
         self.set_layer('flash', [color]*self.size)
         await asyncio.sleep(1)
         self.clear_layer('flash')
@@ -101,9 +100,10 @@ for cls in [Block8LED, Block8LED, Block8LED, Block8LED, Block6LED, BlockMiroirIn
     block = cls(current_index)
     blocks.append(block)
     current_index += block.size
-    if isinstance(block, BlockMiroirInfini): miroir = block
+    if isinstance(block, BlockMiroirInfini):
+        miroir = block
 
-# Initialisation du buffer et des LEDs
+# initialisation du buffer & LEDs
 NUM_LEDS = sum(b.size for b in blocks)
 buffer = [(0,0,0)] * NUM_LEDS
 leds = ws2812b.ws2812b(NUM_LEDS, 0, PIN_NUM)
@@ -113,7 +113,6 @@ async def refresh_loop():
     while True:
         for block in blocks:
             block.compute_pixels(buffer)
-        # unique show
         for idx, (r,g,b) in enumerate(buffer):
             leds.pixels[idx] = (g<<16)|(r<<8)|b
         leds.show()
@@ -132,9 +131,11 @@ async def block_loop(block, semaphore):
 # === Flash global périodique ===
 async def global_flash_loop():
     while True:
-        await asyncio.sleep(random.uniform(*GLOBAL_FLASH_INTERVAL))
+        interval = random.uniform(GLOBAL_FLASH_INTERVAL[0], GLOBAL_FLASH_INTERVAL[1])
+        print('Next global flash in', interval)
+        await asyncio.sleep(interval)
         color = random.choice(COLORS)
-        # Flash sur tous les blocs en parallèle
+        # flash synchronisé sur tous les blocs
         await asyncio.gather(*(block.full_light(color) for block in blocks))
 
 # === Programme principal ===
