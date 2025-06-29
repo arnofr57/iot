@@ -2,41 +2,66 @@ import uasyncio as asyncio
 import random
 import ws2812b
 
-
-# ----------- Configuration générale -----------
-
+# === Config ===
 PIN_NUM = 28
-NUM_LEDS_TOTAL = 40
-leds = ws2812b.ws2812b(NUM_LEDS_TOTAL, 0, PIN_NUM)
-
-# Couleurs prédéfinies
-COLORS = [
-    (255, 0, 0),   # Rouge
-    (0, 255, 0),   # Vert
-    (0, 0, 255),   # Bleu
-    (255, 255, 255),
-    (255, 0, 255),
-    (255, 255, 0),
-    (0, 255, 255), 
-]
-
-# Pour limiter le nombre de blocs actifs
-active_blocks = set()
 MAX_ACTIVE = 2
 
+COLORS = [
+    (255, 0, 0), (0, 255, 0), (0, 0, 255),
+    (255, 255, 255), (255, 0, 255),
+    (255, 255, 0), (0, 255, 255)
+]
 
-# ----------- Classe de base pour un bloc -----------
+# === Fonction de combinaison des couches ===
+def MyEt(*colors):
+    r = max((c[0] for c in colors), default=0)
+    g = max((c[1] for c in colors), default=0)
+    b = max((c[2] for c in colors), default=0)
+    return (r, g, b)
 
+# === Sémaphore simple compatible MicroPython ===
+class SimpleAsyncSemaphore:
+    def __init__(self, max_tokens):
+        self._tokens = max_tokens
+
+    async def __aenter__(self):
+        while self._tokens <= 0:
+            await asyncio.sleep(0.05)
+        self._tokens -= 1
+
+    async def __aexit__(self, exc_type, exc, tb):
+        self._tokens += 1
+
+# === Classe de base LEDBlock ===
 class LEDBlock:
-    def __init__(self, name, indices):
-        self.name = name
+    def __init__(self, indices):
         self.indices = indices
+        self.size = len(indices)
+        self.active_layers = {}
+        self.composition_fn = MyEt
 
-    def set_color(self, color):
-        r, g, b = color
-        grb = (g << 16) | (r << 8) | b
-        for i in self.indices:
-            leds.pixels[i] = grb
+    def set_layer(self, name, color_list):
+        self.active_layers[name] = color_list
+        self._update_combined()
+
+    def clear_layer(self, name):
+        if name in self.active_layers:
+            del self.active_layers[name]
+            self._update_combined()
+
+    def _update_combined(self):
+        # Le flash remplace tout si actif
+        if "flash" in self.active_layers:
+            flash_layer = self.active_layers["flash"]
+            for i, pix in enumerate(self.indices):
+                r, g, b = flash_layer[i]
+                leds.pixels[pix] = (g << 16) | (r << 8) | b
+        else:
+            for i, pix in enumerate(self.indices):
+                colors = [layer[i] for name, layer in self.active_layers.items()
+                          if name != "flash" and i < len(layer)]
+                r, g, b = self.composition_fn(*colors)
+                leds.pixels[pix] = (g << 16) | (r << 8) | b
         leds.show()
 
     async def fade(self, color, fade_in=True, steps=30, delay=0.05):
@@ -45,64 +70,77 @@ class LEDBlock:
             r = int(color[0] * t)
             g = int(color[1] * t)
             b = int(color[2] * t)
-            self.set_color((r, g, b))
+            self.set_layer("fade", [(r, g, b)] * self.size)
             await asyncio.sleep(delay)
+        if not fade_in:
+            self.clear_layer("fade")
 
-    async def run(self):
-        global active_blocks
+    async def full_light(self, color):
+        self.set_layer("flash", [color] * self.size)
+        await asyncio.sleep(10)
+        self.clear_layer("flash")
+
+    async def auto_flash_loop(self):
         while True:
-            while len(active_blocks) >= MAX_ACTIVE:
-                await asyncio.sleep(0.5)
+            await asyncio.sleep(random.uniform(120, 240))
+            await self.full_light(random.choice(COLORS))
 
-            active_blocks.add(self.name)
-            color = random.choice(COLORS)
-            on_time = random.uniform(5, 30)
-            off_time = random.uniform(5, 30)
-
-            await self.fade(color, fade_in=True)
-            await asyncio.sleep(on_time)
-            await self.fade(color, fade_in=False)
-
-            active_blocks.remove(self.name)
-            await asyncio.sleep(off_time)
-
-
-# ----------- Blocs spécifiques (optionnels pour extension) -----------
-
+# === Sous-classes de blocs ===
 class Block8LED(LEDBlock):
-    def __init__(self, name, start_index):
-        super().__init__(name, list(range(start_index, start_index + 8)))
+    def __init__(self, start_index):
+        super().__init__([start_index + i for i in range(8)])
 
 class Block6LED(LEDBlock):
-    def __init__(self, name, start_index):
-        super().__init__(name, list(range(start_index, start_index + 6)))
+    def __init__(self, start_index):
+        super().__init__([start_index + i for i in range(6)])
 
-class MirrorBlock24LED(LEDBlock):
-    def __init__(self, name, start_index):
-        super().__init__(name, list(range(start_index, start_index + 24)))
-        # Tu pourrais ajouter un effet miroir spécifique ici
+class BlockMiroirInfini(LEDBlock):
+    def __init__(self, start_index):
+        super().__init__([start_index + i for i in range(24)])
 
-# ----------- Gestionnaire d’étagère -----------
+    async def spinning_effect(self, delay=0.4):
+        while True:
+            for i in range(self.size):
+                frame = [(0, 0, 0)] * self.size
+                frame[i] = random.choice(COLORS)
+                self.set_layer("spin", frame)
+                await asyncio.sleep(delay)
 
-class ShelfLighting:
-    def __init__(self):
-        self.blocks = []
+# === Construction dynamique des blocs ===
+blocks = []
+current_index = 0
+for cls in [Block8LED, Block8LED, Block8LED, Block8LED, Block6LED, BlockMiroirInfini]:
+    block = cls(current_index)
+    blocks.append(block)
+    current_index += block.size
+    if isinstance(block, BlockMiroirInfini):
+        miroir = block
 
-    def add_block(self, block):
-        self.blocks.append(block)
+# Initialisation des LEDs
+NUM_LEDS = sum(b.size for b in blocks)
+leds = ws2812b.ws2812b(NUM_LEDS, 0, PIN_NUM)
 
-    async def run(self):
-        tasks = [asyncio.create_task(block.run()) for block in self.blocks]
-        await asyncio.gather(*tasks)
+# === Tâche principale pour chaque bloc ===
+async def block_loop(block, semaphore):
+    while True:
+        async with semaphore:
+            color = random.choice(COLORS)
+            await block.fade(color, fade_in=True)
+            await asyncio.sleep(random.uniform(5, 30))
+            await block.fade(color, fade_in=False)
+        await asyncio.sleep(random.uniform(5, 30))
 
+# === Programme principal ===
+async def main():
+    semaphore = SimpleAsyncSemaphore(MAX_ACTIVE)
+    tasks = []
 
-# ----------- Construction et lancement -----------
+    for block in blocks:
+        tasks.append(asyncio.create_task(block_loop(block, semaphore)))
+        tasks.append(asyncio.create_task(block.auto_flash_loop()))
+    # Lancement de l'effet tournant du miroir
+    tasks.append(asyncio.create_task(miroir.spinning_effect()))
 
-shelf = ShelfLighting()
-shelf.add_block(Block8LED("A", 0))
-shelf.add_block(Block8LED("B", 8))
-shelf.add_block(Block6LED("C", 16))
-shelf.add_block(Block6LED("D", 22))
-shelf.add_block(MirrorBlock24LED("E", 24))
+    await asyncio.gather(*tasks)
 
-asyncio.run(shelf.run())
+asyncio.run(main())
