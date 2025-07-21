@@ -5,11 +5,11 @@ import random
 from src import LEDBlock2 as LEDBlock
 COLORS_RGB = [
     (255, 0, 0), (0, 255, 0), (0, 0, 255),
-    #(255, 255, 255), (255, 0, 255),
-    #(255, 255, 0), (0, 255, 255),
+    (255, 255, 255), (255, 0, 255),
+    (255, 255, 0), (0, 255, 255),
 ]
 
-COLORS = [16711680, 65280, 255, ] #16777215, 16711935, 16776960, 65535]
+COLORS = [16711680, 65280, 255, 16777215, 16711935, 16776960, 65535]
 PATERN = ["ABBABAABBAABABBA",
           "AAAAABBAABBAAAAA",
           "BBBBBAABBAABBBBB",
@@ -194,6 +194,18 @@ class ZenAutomate:
                 #print(res)
         return res
                 
+    async def fade(self, res_initial, res_final, steps, duration):
+            print("deburt_fade")
+            mytime = duration / steps
+            for step in range(steps+1):
+                t = step / steps 
+                #print("t " + str(t))
+                res = []
+                res = self.mixscenecoef(res_initial, res_final,1-t)
+                #print(res)
+                self.buffer_scenes =  res
+                await asyncio.sleep(mytime)
+            
 
     async def scenes(self, time_step = 1):
         print("prg1 ZenAutomate lancé")
@@ -206,44 +218,26 @@ class ZenAutomate:
             res_final = self.input_obj.full(random.choice(PATERN), random.choice(COLORS_RGB), random.choice(COLORS_RGB))
             #res_final = self.input_obj.full(random.choice(PATERN),(0,0,255), (255,0,0))
             #res_final = self.input_obj.full(random.choice(PATERN_TEST_AB),random.choice(COLORS_RGB), random.choice(COLORS_RGB))
-
             print(res_final)
             
-            steps = 10
-            print("deburt_fade")
-            for step in range(steps+1):
-                t = step / steps 
-                #print("t " + str(t))
-                res = []
-                res = self.mixscenecoef(res_initial, res_final,1-t)
-                #print(res)
-                self.buffer_scenes =  res
-                await asyncio.sleep(0.1)
+            step = 10
+            duration = 1
+            await self.fade(res_initial, res_final, step, duration)
             
             print("on wait 3s")
             await asyncio.sleep(3)
           
-            steps = 50
-            res_initial = res
+            res_initial = res_final
             res_final = self.set_all((0,0,0))
             print("on descend_le fade")
-            for step in range(steps+1):
-                t = step / steps
-                # print("t " + str(t))
-                res = []
-                res = self.mixscenecoef(res_initial, res_final,1-t)
-                #print(res)
-                self.buffer_scenes =  res
-                await asyncio.sleep(0.1)
+            step = 20
+            duration = 3
+            await self.fade(res_initial, res_final, step, duration)
             print("on wait 3s")
-            
-            
+                        
             self.buffer_scenes = self.set_all((0,0,0))
             await asyncio.sleep(8)
-            
-            #res = self.input_obj.full("XXXXXAXXXXXXXXXX", (255,255,255), random.choice(COLORS_RGB))
-            
-        
+           
     
     async def scintillement(self, time_step = 1):
         print("prg ZenAutomate scintillement lancé")
