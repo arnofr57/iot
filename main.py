@@ -131,6 +131,22 @@ class ZenAutomate:
             res.append(a)
         return res
     
+    
+    def mixscenecoef(self, res_initial, res_final,t):
+        res = []
+        if t == 0 :
+            res = res_final
+        elif t == 1:
+            res = res_initial
+        else:   
+            for color_a, color_b in zip(res_initial, res_final):
+                res_calcul = self.mixpixcoef(color_a, color_b,t)
+                res.append(res_calcul)
+                    #print("compute" + str(len(res)) + " " +str(res))
+                #print(res)
+        return res
+                
+    
     def mixpixcoef(self, color_a, color_b, coef):
         # Extraire RGB de color_a
         a_r = (color_a >> 16) & 0xFF
@@ -152,38 +168,6 @@ class ZenAutomate:
         return mixed_color
 
 
-
-    def mixcoef(self, a, b, coef):
-        size = self.input_obj.NB_LEDS
-        if len(a) != size:
-            a = [0] * size
-        if len(b) != size:
-            b = [0] * size
-
-        return [self.mixpixcoef(ca, cb, coef) for ca, cb in zip(a, b)]
-    
-
-    async def run(self):
-        print("ZenAutomate lancé")
-        tasks = []
-        #while True:
-        print(f"[{self.input_obj.name}] cycle...prg ")
-        semaphore = divers.SimpleAsyncSemaphore(MAX_ACTIVE)
-        # Mélange aléatoire de l'ordre des blocks
-        shuffled_blocks = list(self.input_obj.blocks)
-        #for i in range(len(shuffled_blocks) - 1, 0, -1):
-        #    j = random.randint(0, i)
-        #    shuffled_blocks[i], shuffled_blocks[j] = shuffled_blocks[j], shuffled_blocks[i]
-        #tasks.extend(asyncio.create_task(automate_main.scintillement(b, random.choice(COLORS_RGB),20,4,8,50,5)) for b in shuffled_blocks)
-        tasks.append(asyncio.create_task(automate_main.scintillement(shuffled_blocks[0], random.choice(COLORS_RGB),40,7,8,50,5)))
-        
-        #tasks.append(asyncio.create_task(automate_main.scenes(self.input_obj.full(random.choice(PATERN), random.choice(COLORS_RGB), random.choice(COLORS_RGB)),
-        #                                         20, 1, 3, 50, 3,
-        #                                         60)))
-        tasks.append(asyncio.create_task(automate_main.mirroirRun(1)))
-        tasks.append(asyncio.create_task(automate_main.show(0.1)))
-        
-        await asyncio.gather(*tasks)
     
     async def show(self, time_step = 1):
         print("SHOW START")
@@ -195,20 +179,8 @@ class ZenAutomate:
             self.input_obj.show()
             await asyncio.sleep(time_step)    
 
-    def mixscenecoef(self, res_initial, res_final,t):
-        res = []
-        if t == 0 :
-            res = res_final
-        elif t == 1:
-            res = res_initial
-        else:   
-            for color_a, color_b in zip(res_initial, res_final):
-                res_calcul = self.mixpixcoef(color_a, color_b,t)
-                res.append(res_calcul)
-                    #print("compute" + str(len(res)) + " " +str(res))
-                #print(res)
-        return res
-                
+
+
     async def fade(self, res_initial, res_final, steps, duration):
         print("deburt_fade")
         mytime = duration / steps
@@ -221,7 +193,7 @@ class ZenAutomate:
             self.buffer_scenes =  res
             await asyncio.sleep(mytime)
             
-    async def fadeblock(self, block, color_initial, color_final,steps, duration,down):
+    async def fadeblock(self, block, color_initial, color_final,steps, duration):
         print("debut fadeblock")
         print(block)
         print(block.indices)
@@ -229,44 +201,29 @@ class ZenAutomate:
         mytime = duration / steps
         #color_initial = self.buffer_scintillement
         for step in range(steps+1):
-            if down :
-                t = step / steps
-            else:
-                t = 1 - step / steps
+            t = 1 - step / steps
             color_compute = self.mixpixcoef(color_initial, color_final,t)    
-                
+            print(str(t) + " " + str(color_compute))    
             #color_compute = ([res_calcul] * t )
             print(color_compute)
             self.buffer_scintillement[block.indices[0]:block.indices[0] + block.size] = [ color_compute ]*block.size
             await asyncio.sleep(mytime)
 
 
-        
-            
-
     async def scenes(self, res_final, step_on, duration_on, on, step_off, duration_off, time_step = 1):
         print("prg1 ZenAutomate lancé")
         while True:
             print(f"[{self.input_obj.name}] cycle     prg i")
             res_initial = list(self.input_obj.leds.pixels)
-            print("initial")
-            print(res_initial)
-            print("final")
             res_final = self.input_obj.full(random.choice(PATERN), random.choice(COLORS_RGB), random.choice(COLORS_RGB))
-            #res_final = self.input_obj.full(random.choice(PATERN),(0,0,255), (255,0,0))
-            #res_final = self.input_obj.full(random.choice(PATERN_TEST_AB),random.choice(COLORS_RGB), random.choice(COLORS_RGB))
-            print(res_final)
-            
             await self.fade(res_initial, res_final, step_on, duration_on)
             
-            print("on wait 3s")
+            print("on wait")
             await asyncio.sleep(on)
           
             res_initial = res_final
             res_final = self.set_all((0,0,0))
-            print("on descend_le fade")
             await self.fade(res_initial, res_final, step_off, duration_off)
-            print("on wait 3s")
                         
             self.buffer_scenes = self.set_all((0,0,0))
             await asyncio.sleep(8)
@@ -275,9 +232,9 @@ class ZenAutomate:
     async def scintillement(self, block, color, step_on, duration_on, on, step_off, duration_off,):
         while True:
             color = random.choice(COLORS_RGB)
-            await self.fadeblock(block,0, rvb_to_dec(color),step_on,duration_on,False)
+            await self.fadeblock(block,0, rvb_to_dec(color),step_on,duration_on)
             await asyncio.sleep(on)
-            await self.fadeblock(block, rvb_to_dec(color), 0,step_off,duration_off,True)
+            await self.fadeblock(block, rvb_to_dec(color), 0,step_off,duration_off)
             ##await block.fade(color, fade_in=False)
             #await asyncio.sleep(random.uniform(5, 30))
     
@@ -306,6 +263,35 @@ class ZenAutomate:
             
             await asyncio.sleep(time_step)
             print(f"[{self.input_obj.name}] cycle end prg mirroirrun ")    
+
+
+    async def run(self):
+        print("ZenAutomate lancé")
+        tasks = []
+        #while True:
+        print(f"[{self.input_obj.name}] cycle...prg ")
+        semaphore = divers.SimpleAsyncSemaphore(MAX_ACTIVE)
+        # Mélange aléatoire de l'ordre des blocks
+        shuffled_blocks = list(self.input_obj.blocks)
+        #for i in range(len(shuffled_blocks) - 1, 0, -1):
+        #    j = random.randint(0, i)
+        #    shuffled_blocks[i], shuffled_blocks[j] = shuffled_blocks[j], shuffled_blocks[i]
+        #tasks.extend(asyncio.create_task(automate_main.scintillement(b, random.choice(COLORS_RGB),20,4,8,50,5)) for b in shuffled_blocks)
+        tasks.append(asyncio.create_task(automate_main.scintillement(shuffled_blocks[0], random.choice(COLORS_RGB),40,7,8,50,5)))
+        
+        #tasks.append(asyncio.create_task(automate_main.scenes(self.input_obj.full(random.choice(PATERN), random.choice(COLORS_RGB), random.choice(COLORS_RGB)),
+        #                                         20, 1, 3, 50, 3,
+        #                                         60)))
+        tasks.append(asyncio.create_task(automate_main.mirroirRun(1)))
+        tasks.append(asyncio.create_task(automate_main.show(0.1)))
+        
+        await asyncio.gather(*tasks)
+
+
+
+
+        
+            
 
 # Création des objets
 arnaudmeuble = ZenOutput4x4()
