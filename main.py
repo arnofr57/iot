@@ -163,7 +163,9 @@ class ZenAutomate:
         print("ZenAutomate lancé")
         #while True:
         print(f"[{self.input_obj.name}] cycle...prg ")
-        asyncio.create_task(automate_main.scenes(20))
+        asyncio.create_task(automate_main.scenes(self.input_obj.full(random.choice(PATERN), random.choice(COLORS_RGB), random.choice(COLORS_RGB)),
+                                                 20, 1, 3, 50, 3,
+                                                 60))
         asyncio.create_task(automate_main.scintillement(60))
         asyncio.create_task(automate_main.mirroirRun(1))
         asyncio.create_task(automate_main.show(0.1))
@@ -207,7 +209,7 @@ class ZenAutomate:
                 await asyncio.sleep(mytime)
             
 
-    async def scenes(self, time_step = 1):
+    async def scenes(self, res_final, step_on, duration_on, on, step_off, duration_off, time_step = 1):
         print("prg1 ZenAutomate lancé")
         while True:
             print(f"[{self.input_obj.name}] cycle     prg i")
@@ -220,19 +222,15 @@ class ZenAutomate:
             #res_final = self.input_obj.full(random.choice(PATERN_TEST_AB),random.choice(COLORS_RGB), random.choice(COLORS_RGB))
             print(res_final)
             
-            step = 10
-            duration = 1
-            await self.fade(res_initial, res_final, step, duration)
+            await self.fade(res_initial, res_final, step_on, duration_on)
             
             print("on wait 3s")
-            await asyncio.sleep(3)
+            await asyncio.sleep(on)
           
             res_initial = res_final
             res_final = self.set_all((0,0,0))
             print("on descend_le fade")
-            step = 20
-            duration = 3
-            await self.fade(res_initial, res_final, step, duration)
+            await self.fade(res_initial, res_final, step_off, duration_off)
             print("on wait 3s")
                         
             self.buffer_scenes = self.set_all((0,0,0))
