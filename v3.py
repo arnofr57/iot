@@ -8,7 +8,7 @@ COLORS_RGB = [
     (255, 0, 0), (0, 255, 0), (0, 0, 255),
     (255, 255, 255), (255, 0, 255),
     (255, 255, 0), (0, 255, 255),
-]
+] 
 
 COLORS = [16711680, 65280, 255, 16777215, 16711935, 16776960, 65535]
 PATERN = ["ABBABAABBAABABBA",
@@ -17,8 +17,9 @@ PATERN = ["ABBABAABBAABABBA",
           "ABBAABBAABBAABBA",
           "AAAABBBBAAAABBBB",
           "AXXAXXXXXXXXAXXA",
-          "XXXXXAAXXAAXXXXX"]
-MAX_ACTIVE = 6
+          "XXXXXAAXXAAXXXXX",
+          "XAXXAAAXXAXXXAXX"]
+MAX_ACTIVE = 0
 PATERN_TEST_AB = ["AB"]
   
 def rvb_to_dec(color):
@@ -60,6 +61,7 @@ class ZenOutput4x4(ZenOutput):
         self.show()
  
     def full(self, patern = "ABBABAABBAABABBA", color1 =(255,255,255), color2=(255,255,255)):
+        patern = "XXAXAAAXXXAXXAXX"
         print("full patern " + patern + str(color1) + str(color2))
         res = []
         block = 0
@@ -222,7 +224,7 @@ class ZenAutomate:
             await self.fade(res_initial, res_final, step_off, duration_off)
                         
             self.buffer_scenes = self.set_all((0,0,0))
-            time_step = random.uniform(60, 90)
+            #time_step = random.uniform(60, 90)
             await asyncio.sleep(time_step)
            
     
@@ -253,8 +255,6 @@ class ZenAutomate:
     
     async def random_scintillement(self):
         while True:
-
-                
             color = random.choice(COLORS_RGB)
             await self.scintillementBlock()
             
@@ -285,7 +285,7 @@ class ZenAutomate:
         tasks = []
         #while True:
         print(f"[{self.input_obj.name}] cycle...prg ")
-        semaphore = divers.SimpleAsyncSemaphore(MAX_ACTIVE)
+        # semaphore = divers.SimpleAsyncSemaphore(MAX_ACTIVE)
         # Mélange aléatoire de l'ordre des blocks
         shuffled_blocks = list(self.input_obj.blocks)
         print(shuffled_blocks)
@@ -296,9 +296,9 @@ class ZenAutomate:
         for _ in range(MAX_ACTIVE):
             tasks.append(asyncio.create_task(self.random_scintillement()))
 
-        tasks.append(asyncio.create_task(automate_main.scenes(self.input_obj.full(random.choice(PATERN), random.choice(COLORS_RGB), random.choice(COLORS_RGB)),
-                                                 1, 0, 5, 50, 3,
-                                                 60)))
+        tasks.append(asyncio.create_task(automate_main.scenes(self.input_obj.full("XAXXAAAXXAXXXAXX", (0,255,0), random.choice(COLORS_RGB)),
+                                         1, 1, 4, 10, 5,
+                                         10)))
         tasks.append(asyncio.create_task(automate_main.mirroirRun(1)))
         tasks.append(asyncio.create_task(automate_main.show(0.1)))
         
@@ -321,5 +321,4 @@ async def main():
     #print("Fin du programme")
 
 asyncio.run(main())
-
 
