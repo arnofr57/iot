@@ -75,53 +75,7 @@ class ZenAutomate:
             a = self.input_obj.rvb_to_dec(color)
             res.append(a)
         return res
-    
-    def mixscenecoef(self, res_initial, res_final,t):
-        res = []
-        if t == 0 :
-            res = res_final
-        elif t == 1:
-            res = res_initial
-        else:   
-            for color_a, color_b in zip(res_initial, res_final):
-                res_calcul = self.mixpixcoef(color_a, color_b,t)
-                res.append(res_calcul)
-        return res
-        
-    def mixpixcoef(self, color_a, color_b, coef):
-        # Extraire RGB de color_a
-        a_r = (color_a >> 16) & 0xFF
-        a_g = (color_a >> 8) & 0xFF
-        a_b = color_a & 0xFF
 
-        # Extraire RGB de color_b
-        b_r = (color_b >> 16) & 0xFF
-        b_g = (color_b >> 8) & 0xFF
-        b_b = color_b & 0xFF
-
-        # Mélange linéaire des composantes (interpolation)
-        res_r = int(a_r * coef + b_r * (1 - coef))
-        res_g = int(a_g * coef + b_g * (1 - coef))
-        res_b = int(a_b * coef + b_b * (1 - coef))
-
-        # Recomposer en couleur 24 bits
-        mixed_color = (res_r << 16) + (res_g << 8) + res_b
-        return mixed_color
-
-    async def fade(self, res_final, steps, duration, buffer_scenes, on):
-        print("debut_fade")
-        if steps == 0:
-            steps=1
-        mytime = duration / steps
-        for step in range(steps+1):
-            t = step / steps 
-            res = []
-            res_initial = list(self.input_obj.leds.pixels)
-            #print("STEP : " + str(step))
-            res = self.mixscenecoef(res_final, res_initial ,t)
-            buffer_scenes[:] = res
-            await asyncio.sleep_ms(int(mytime))
-        await asyncio.sleep_ms(on)
             
     async def fadeblock(self, block, color_initial, color_final,steps, duration):
         mytime = duration / steps
@@ -139,9 +93,9 @@ class ZenAutomate:
             print(f"[{self.input_obj.name}] cycle     prg i")
             res_initial = list(self.input_obj.leds.pixels)
             res_final = self.input_obj.full(random.choice(PATERN), random.choice(COLORS_RGB), random.choice(COLORS_RGB))
-            await self.fade(res_final, step_on, duration_on, buffer_scenes,on)
+            await self.input_obj.fade(res_final, step_on, duration_on, buffer_scenes,on)
             res_0 = self.set_all((0,0,0))
-            await self.fade(res_0, step_on, duration_on, buffer_scenes,80)
+            await self.input_obj.fade(res_0, step_on, duration_on, buffer_scenes,80)
             buffer_scenes[:] = res_0
             print("c'est fini")
             
@@ -168,22 +122,22 @@ class ZenAutomate:
         vertical4     = self.input_obj.full("BBBBBBBBBBBBAAAA", color1, color2)
         full          = self.input_obj.full("AAAAAAAAAAAAAAAA", color1, color2)            
         
-        await self.fade(value_centre, step_on, duration_on, buffer_scenes, delay)
-        await self.fade(value_croix, step_on, duration_on, buffer_scenes, delay)
-        await self.fade(value_croix_cent, step_on, duration_on, buffer_scenes, delay)
-        await self.fade(value_rond, step_on, duration_on, buffer_scenes, delay)
-        await self.fade(value_jesus1, step_on, duration_on, buffer_scenes, delay)
-        await self.fade(value_jesus2, step_on, duration_on, buffer_scenes, vitesse)
-        await self.fade(vertical1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.fade(vertical2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.fade(vertical3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.fade(vertical4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.fade(hauteur1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.fade(hauteur2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.fade(hauteur3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.fade(hauteur4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.fade(full, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
-        await self.fade(value_black, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
+        await self.input_obj.fade(value_centre, step_on, duration_on, buffer_scenes, delay)
+        await self.input_obj.fade(value_croix, step_on, duration_on, buffer_scenes, delay)
+        await self.input_obj.fade(value_croix_cent, step_on, duration_on, buffer_scenes, delay)
+        await self.input_obj.fade(value_rond, step_on, duration_on, buffer_scenes, delay)
+        await self.input_obj.fade(value_jesus1, step_on, duration_on, buffer_scenes, delay)
+        await self.input_obj.fade(value_jesus2, step_on, duration_on, buffer_scenes, delay)
+        await self.input_obj.fade(vertical1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.input_obj.fade(vertical2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.input_obj.fade(vertical3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.input_obj.fade(vertical4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.input_obj.fade(hauteur1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.input_obj.fade(hauteur2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.input_obj.fade(hauteur3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.input_obj.fade(hauteur4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.input_obj.fade(full, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
+        await self.input_obj.fade(value_black, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
         
 
     async def demo(self, buffer_scenes):
@@ -193,7 +147,7 @@ class ZenAutomate:
             #await self.prg_4x4_sympa(color1 = "RAND", color2=(0,0,0), step_on=100, duration_on = 1000, buffer_scenes=buffer_scenes, vitesse=2000)
             color1 = random.choice(COLORS_RGB)
             color2 = random.choice(COLORS_RGB)
-            await self.prg_4x4_sympa(color1 = "RAND", color2=(0,0,0), step_on=160, duration_on = 5000, buffer_scenes=buffer_scenes, delay=10000)
+            await self.prg_4x4_sympa(color1 = "RAND", color2=(0,0,0), step_on=100, duration_on = 20, buffer_scenes=buffer_scenes, delay=5)
             color1 = random.choice(COLORS_RGB)
             #await self.prg_4x4_sympa(color1 = color1, color2=(0,0,0), step_on=150, duration_on = 4000, buffer_scenes=buffer_scenes, vitesse=4000)
             
@@ -298,7 +252,7 @@ class ZenAutomate:
         """
         while True:
             self.running_alone = self.pin_running_alone.value() == 0
-            print(self.pin_running_alone.value())
+            #print(self.pin_running_alone.value())
             self.starting = self.pin_starting.value() == 0
             self.mirroir = self.pin_mirroir.value() == 0
             await asyncio.sleep_ms(delay_ms)
