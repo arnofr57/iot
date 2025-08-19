@@ -29,6 +29,14 @@ class ZenOutput:
         self.name = name
         #print("ZenOutput créé avec le nom :", name)
         
+    def set_all(self, color):
+        res = []
+        b = self.leds.pixels
+        for i in range(0,len(b)):
+            a = self.rvb_to_dec(color)
+            res.append(a)
+        return res
+        
     def rvb_to_dec(self, color):
         return (color[0] << 16) + (color[1] << 8) + color[2]
 
@@ -167,6 +175,46 @@ class ZenOutput4x4(ZenOutput):
             print(res)
             
         return res;
+    
+    async def prg_4x4_sympa(self, color1, color2, step_on, duration_on, buffer_scenes, delay):
+        print(f"[{self.name}] Mon prg 4x4 sympathique")
+        if color1 == "RAND1TIME":
+            color1 = random.choice(COLORS_RGB)
+        if color2 == "RAND1TIME":
+            color2 = random.choice(COLORS_RGB)
+        value_black = self.set_all((0,0,0))
+        value_centre  = self.full("BBBBBAABBAABBBBB", color1, color2)
+        value_croix   = self.full("ABBABBBBBBBBABBA", color1, color2)
+        value_croix_cent = self.full("AXXAXAAXXAAXAXXA", color1, color2)
+        value_rond    = self.full("BAABABBAABBABAAB", color1, color2)
+        value_jesus1  = self.full("BBABAAABBBABBABB", color1, color2)
+        value_jesus2  = self.full("BABBBAAABABBBBAB", color1, color2)
+        hauteur1      = self.full("ABBBBBBAABBBBBBA", color1, color2)
+        hauteur2      = self.full("BABBBBABBABBBBAB", color1, color2)
+        hauteur3      = self.full("BBABBABBBBABBABB", color1, color2)
+        hauteur4      = self.full("BBBAABBBBBBAABBB", color1, color2)
+        vertical1     = self.full("AAAABBBBBBBBBBBB", color1, color2)
+        vertical2     = self.full("BBBBAAAABBBBBBBB", color1, color2)
+        vertical3     = self.full("BBBBBBBBAAAABBBB", color1, color2)
+        vertical4     = self.full("BBBBBBBBBBBBAAAA", color1, color2)
+        full          = self.full("AAAAAAAAAAAAAAAA", color1, color2)            
+        
+        await self.fade(value_centre, step_on, duration_on, buffer_scenes, delay)
+        await self.fade(value_croix, step_on, duration_on, buffer_scenes, delay)
+        await self.fade(value_croix_cent, step_on, duration_on, buffer_scenes, delay)
+        await self.fade(value_rond, step_on, duration_on, buffer_scenes, delay)
+        await self.fade(value_jesus1, step_on, duration_on, buffer_scenes, delay)
+        await self.fade(value_jesus2, step_on, duration_on, buffer_scenes, delay)
+        await self.fade(vertical1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.fade(vertical2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.fade(vertical3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.fade(vertical4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.fade(hauteur1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.fade(hauteur2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.fade(hauteur3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.fade(hauteur4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        await self.fade(full, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
+        await self.fade(value_black, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
         
     def show(self):
         self.leds.show()

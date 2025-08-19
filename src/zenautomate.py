@@ -68,13 +68,6 @@ class ZenAutomate:
             res.append(mixed_color)
         return res
 
-    def set_all(self, color):
-        res = []
-        b = self.input_obj.leds.pixels
-        for i in range(0,len(b)):
-            a = self.input_obj.rvb_to_dec(color)
-            res.append(a)
-        return res
 
             
     async def fadeblock(self, block, color_initial, color_final,steps, duration):
@@ -98,62 +91,14 @@ class ZenAutomate:
             await self.input_obj.fade(res_0, step_on, duration_on, buffer_scenes,80)
             buffer_scenes[:] = res_0
             print("c'est fini")
-            
-    async def prg_4x4_sympa(self, color1, color2, step_on, duration_on, buffer_scenes, delay):
-        print(f"[{self.input_obj.name}] Mon prg 4x4 sympathique")
-        if color1 == "RAND1TIME":
-            color1 = random.choice(COLORS_RGB)
-        if color2 == "RAND1TIME":
-            color2 = random.choice(COLORS_RGB)
-        value_black = self.set_all((0,0,0))
-        value_centre  = self.input_obj.full("BBBBBAABBAABBBBB", color1, color2)
-        value_croix   = self.input_obj.full("ABBABBBBBBBBABBA", color1, color2)
-        value_croix_cent = self.input_obj.full("AXXAXAAXXAAXAXXA", color1, color2)
-        value_rond    = self.input_obj.full("BAABABBAABBABAAB", color1, color2)
-        value_jesus1  = self.input_obj.full("BBABAAABBBABBABB", color1, color2)
-        value_jesus2  = self.input_obj.full("BABBBAAABABBBBAB", color1, color2)
-        hauteur1      = self.input_obj.full("ABBBBBBAABBBBBBA", color1, color2)
-        hauteur2      = self.input_obj.full("BABBBBABBABBBBAB", color1, color2)
-        hauteur3      = self.input_obj.full("BBABBABBBBABBABB", color1, color2)
-        hauteur4      = self.input_obj.full("BBBAABBBBBBAABBB", color1, color2)
-        vertical1     = self.input_obj.full("AAAABBBBBBBBBBBB", color1, color2)
-        vertical2     = self.input_obj.full("BBBBAAAABBBBBBBB", color1, color2)
-        vertical3     = self.input_obj.full("BBBBBBBBAAAABBBB", color1, color2)
-        vertical4     = self.input_obj.full("BBBBBBBBBBBBAAAA", color1, color2)
-        full          = self.input_obj.full("AAAAAAAAAAAAAAAA", color1, color2)            
-        
-        await self.input_obj.fade(value_centre, step_on, duration_on, buffer_scenes, delay)
-        await self.input_obj.fade(value_croix, step_on, duration_on, buffer_scenes, delay)
-        await self.input_obj.fade(value_croix_cent, step_on, duration_on, buffer_scenes, delay)
-        await self.input_obj.fade(value_rond, step_on, duration_on, buffer_scenes, delay)
-        await self.input_obj.fade(value_jesus1, step_on, duration_on, buffer_scenes, delay)
-        await self.input_obj.fade(value_jesus2, step_on, duration_on, buffer_scenes, delay)
-        await self.input_obj.fade(vertical1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.input_obj.fade(vertical2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.input_obj.fade(vertical3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.input_obj.fade(vertical4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.input_obj.fade(hauteur1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.input_obj.fade(hauteur2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.input_obj.fade(hauteur3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.input_obj.fade(hauteur4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
-        await self.input_obj.fade(full, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
-        await self.input_obj.fade(value_black, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
-        
 
     async def demo(self, buffer_scenes):
         print("prg demo ZenAutomate lancé")
         while True:
-            buffer_scenes[:] = self.set_all((0,0,0))
-            #await self.prg_4x4_sympa(color1 = "RAND", color2=(0,0,0), step_on=100, duration_on = 1000, buffer_scenes=buffer_scenes, vitesse=2000)
+            buffer_scenes[:] = self.input_obj.set_all((0,0,0))
             color1 = random.choice(COLORS_RGB)
-            color2 = random.choice(COLORS_RGB)
-            await self.prg_4x4_sympa(color1 = "RAND", color2=(0,0,0), step_on=100, duration_on = 20, buffer_scenes=buffer_scenes, delay=5)
-            color1 = random.choice(COLORS_RGB)
-            #await self.prg_4x4_sympa(color1 = color1, color2=(0,0,0), step_on=150, duration_on = 4000, buffer_scenes=buffer_scenes, vitesse=4000)
-            
-            
-            
-            
+            #color2 = random.choice(COLORS_RGB)
+            await self.input_obj.prg_4x4_sympa(color1 = "RAND", color2=(0,0,0), step_on=100, duration_on = 20, buffer_scenes=buffer_scenes, delay=5)
     
     async def scintillementBlock(self):
         while True:
