@@ -79,19 +79,6 @@ class ZenAutomate:
             self.buffer_scintillement[block.indices[0]:block.indices[0] + block.size] = [color_compute]*block.size
             await asyncio.sleep(mytime)
 
-
-    async def scenes(self, res_final, step_on, duration_on, on, step_off, duration_off, time_step, buffer_scenes):
-        print("prg1 ZenAutomate lancé")
-        while True:
-            print(f"[{self.input_obj.name}] cycle     prg i")
-            res_initial = list(self.input_obj.leds.pixels)
-            res_final = self.input_obj.full(random.choice(PATERN), random.choice(COLORS_RGB), random.choice(COLORS_RGB))
-            await self.input_obj.fade(res_final, step_on, duration_on, buffer_scenes,on)
-            res_0 = self.set_all((0,0,0))
-            await self.input_obj.fade(res_0, step_on, duration_on, buffer_scenes,80)
-            buffer_scenes[:] = res_0
-            print("c'est fini")
-
     async def demo(self, buffer_scenes):
         print("prg demo ZenAutomate lancé")
         while True:
