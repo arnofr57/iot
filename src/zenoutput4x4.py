@@ -28,7 +28,8 @@ class ZenOutput:
     def __init__(self, name):
         self.name = name
         #print("ZenOutput créé avec le nom :", name)
-        
+    
+    #TODO Ca apelle self.pixels.
     def set_all(self, color):
         res = []
         b = self.leds.pixels
@@ -84,11 +85,13 @@ class ZenOutput:
             coef = step / (steps+1) 
             res = []
             res_initial = list(self.leds.pixels)
-            print("coef : " + str(coef))
+            
             res = self.mixscenecoef(res_final, res_initial ,coef)
+            #print("coef : " + str(coef) + " " + str(res))
             buffer_scenes[:] = res
             await asyncio.sleep(mytime)
         res = self.mixscenecoef(res_final, res_initial ,1)
+        #print("coef : " + str(1) + " " + str(res))
         await asyncio.sleep(mytime)
         await asyncio.sleep(on)
 
@@ -144,7 +147,7 @@ class ZenOutput4x4(ZenOutput):
  
     def full(self, patern, color1, color2):
         #patern = "XXAXAAAXXXAXXAXX"
-        print("full patern " + patern + str(color1) + str(color2))
+        #print("full patern " + patern + str(color1) + str(color2))
         res = []
         block = 0
         if color1=="RAND":
@@ -172,12 +175,33 @@ class ZenOutput4x4(ZenOutput):
                         a = [0] * self.blocks[block].size
                     res = res + a  
                     block += 1
-            print(res)
+            #print(res)
             
         return res;
     
+    async def prg_4x4_sympa_v2(self, color1, color2, step_on, duration_on, buffer_scenes, delay):
+        delay = 1
+        #await self.fade2(PATTERNS["centre"], color1, color2, delay)
+        #await self.fade(value_croix, step_on, duration_on, buffer_scenes, delay)
+        #await self.fade(value_croix_cent, step_on, duration_on, buffer_scenes, delay)
+        #await self.fade(value_rond, step_on, duration_on, buffer_scenes, delay)
+        #await self.fade(value_jesus1, step_on, duration_on, buffer_scenes, delay)
+        #await self.fade(value_jesus2, step_on, duration_on, buffer_scenes, delay)
+        #await self.fade(vertical1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        #await self.fade(vertical2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        #await self.fade(vertical3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        #await self.fade(vertical4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        #await self.fade(hauteur1, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        #await self.fade(hauteur2, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        #await self.fade(hauteur3, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        #await self.fade(hauteur4, int(step_on/4), int(duration_on/4), buffer_scenes, int(delay/4))
+        #await self.fade(full, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
+        #await self.fade(value_black, int(step_on/4), int(duration_on/4), buffer_scenes, delay*2)
+        
+    
+    
     async def prg_4x4_sympa(self, color1, color2, step_on, duration_on, buffer_scenes, delay):
-        print(f"[{self.name}] Mon prg 4x4 sympathique")
+        print(f"[{self.name}] Mon prg 4x4 sympathique " + str(color1) + " " + str(color2) + " " + str(step_on) + " " + str(duration_on) + " " + str(delay))
         if color1 == "RAND1TIME":
             color1 = random.choice(COLORS_RGB)
         if color2 == "RAND1TIME":

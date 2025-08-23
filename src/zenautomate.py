@@ -32,7 +32,142 @@ class ZenAutomate:
         self.pin_running_alone = Pin(13, Pin.IN, Pin.PULL_UP)
         self.pin_starting = Pin(12, Pin.IN, Pin.PULL_UP)
         self.pin_mirroir = Pin(11, Pin.IN, Pin.PULL_UP)
+        
+    async def scene_controller(self):
+        """
+        Gère les scènes dynamiquement selon les états GPIO
+        """
+        active_tasks = {}
+
+        while True:
+            # Nettoyage des tâches terminées (au cas où)
+            to_remove = [key for key, task in active_tasks.items() if task.done()]
+            for key in to_remove:
+                del active_tasks[key]
+
+            # running_alone
+            if self.running_alone and "random_scint" not in active_tasks:
+                print("Démarrage random_scint")
+                task = asyncio.create_task(self.random_scintillement())
+                active_tasks["random_scint"] = task
+            elif not self.running_alone and "random_scint" in active_tasks:
+                print("Arrêt random_scint")
+                active_tasks["random_scint"].cancel()
+                del active_tasks["random_scint"]
+
+            # starting
+            if self.starting_state == 0:
+                self.buffer_scenes = self.input_obj.set_all((0,0,0))
+                
+            if self.starting_state == 1:
+                if "prg1" not in active_tasks:
+                    print("Démarrage prg1")
+                    task = asyncio.create_task(self.demo(color1 = "RAND", color2=(0,0,0),
+                                                         step_on=100, duration_on = 3, buffer_scenes=self.buffer_scenes, delay=5))
+                    active_tasks["prg1"] = task
+            else:
+                if "prg1" in active_tasks:
+                    print("Arrêt prg1")
+                    
+                    active_tasks["prg1"].cancel()
+                    del active_tasks["prg1"]
+
+            if self.starting_state == 2:
+                if "prg2" not in active_tasks:
+                    print("Démarrage prg2")
+                    task = asyncio.create_task(self.demo(color1 = "RAND1TIME", color2=(0,0,0),
+                                                         step_on=10, duration_on = 0.5, buffer_scenes=self.buffer_scenes, delay=1))
+                    active_tasks["prg2"] = task
+            else:
+                if "prg2" in active_tasks:
+                    print("Arrêt prg2")
+                    self.buffer_scenes = self.input_obj.set_all((0,0,0))
+                    active_tasks["prg2"].cancel()
+                    del active_tasks["prg2"]
+
+            if self.starting_state == 3:
+                if "prg3" not in active_tasks:
+                    print("Démarrage prg3")
+                    task = asyncio.create_task(self.demo(color1 = "RAND", color2=(0,0,0),
+                                                         step_on=100, duration_on = 10, buffer_scenes=self.buffer_scenes, delay=15))
+                    active_tasks["prg3"] = task
+            else:
+                if "prg3" in active_tasks:
+                    print("Arrêt prg3")
+                    self.buffer_scenes = self.input_obj.set_all((0,0,0))
+                    active_tasks["prg3"].cancel()
+                    del active_tasks["prg3"]
+            # mirroir
+            if self.mirroir and "mirroir" not in active_tasks:
+                print("Démarrage mirroir")
+                task = asyncio.create_task(self.mirroirRun(1))
+                active_tasks["mirroir"] = task
+            elif not self.mirroir and "mirroir" in active_tasks:
+                print("Arrêt mirroir")
+                self.buffer_mirroirRun = self.input_obj.set_all((0,0,0))
+                active_tasks["mirroir"].cancel()
+                del active_tasks["mirroir"]
+
+            await asyncio.sleep(0.2)
+
+
+    async def monitor_switches(self, delay_ms=100):
+        """
+        Surveille les GPIO et inverse l'état au clic (toggle)
+        """
+        prev_running_alone = 1
+        prev_starting = 1
+        self.starting_state = 0   # 0=stop, 1=prg1, 2=prg2, ...
+        prev_mirroir = 1
+
+        # États initiaux
+        self.running_alone = False
+        self.starting = False
+        self.mirroir = False
+
+        while True:
+            cur_running_alone = self.pin_running_alone.value()
+            cur_starting = self.pin_starting.value()
+            cur_mirroir = self.pin_mirroir.value()
+            
+
+            # running_alone toggle
+            if prev_running_alone == 1 and cur_running_alone == 0:
+                self.running_alone = not self.running_alone
+                print("running_alone =", self.running_alone)
+
+            # starting toggle
+            if prev_starting == 1 and cur_starting == 0:
+                self.starting_state = (self.starting_state + 1) % 4 
+                #self.starting = not self.starting
+                print("starting =", self.starting_state)
+
+            # mirroir toggle
+            if prev_mirroir == 1 and cur_mirroir == 0:
+                self.mirroir = not self.mirroir
+                print("mirroir =", self.mirroir)
+
+            prev_running_alone = cur_running_alone
+            prev_starting = cur_starting
+            prev_mirroir = cur_mirroir
+
+            await asyncio.sleep_ms(delay_ms)
+
+
+
+    async def run(self):
+        print("ZenAutomate lancé")
+        print(f"[{self.input_obj.name}] cycle...prg run()")
+        # Lancer la surveillance des GPIO
+        asyncio.create_task(self.monitor_switches())
+        tasks = []
+        # Tâches dynamiques réactives
+        tasks.append(asyncio.create_task(self.scene_controller()))
+        tasks.append(asyncio.create_task(self.show(0.05)))
+        await asyncio.gather(*tasks)
       
+      
+    #**********************************************************************************
     def rvb_to_dec(color):
         return (color[0] << 16) + (color[1] << 8) + color[2]
         
@@ -79,13 +214,14 @@ class ZenAutomate:
             self.buffer_scintillement[block.indices[0]:block.indices[0] + block.size] = [color_compute]*block.size
             await asyncio.sleep(mytime)
 
-    async def demo(self, buffer_scenes):
+    async def demo(self, color1, color2, step_on, duration_on, buffer_scenes, delay):
         print("prg demo ZenAutomate lancé")
         while True:
             buffer_scenes[:] = self.input_obj.set_all((0,0,0))
-            color1 = random.choice(COLORS_RGB)
+            if color1 == "RAND1TIME":
+                color1 = random.choice(COLORS_RGB)
             #color2 = random.choice(COLORS_RGB)
-            await self.input_obj.prg_4x4_sympa(color1 = "RAND", color2=(0,0,0), step_on=100, duration_on = 20, buffer_scenes=buffer_scenes, delay=5)
+            await self.input_obj.prg_4x4_sympa(color1, color2, step_on, duration_on, buffer_scenes, delay)
     
     async def scintillementBlock(self):
         while True:
@@ -144,59 +280,3 @@ class ZenAutomate:
             await asyncio.sleep(time_step)
             
 
-    async def scene_controller(self):
-        """
-        Gère les scènes dynamiquement selon les états GPIO
-        """
-        active_tasks = {}
-
-        while True:
-            # Nettoyage des tâches terminées
-            
-            self.running_alone = self.starting = self.mirroir = True
-            self.running_alone = False
-            to_remove = [key for key, task in active_tasks.items() if task.done()]
-            for key in to_remove:
-                del active_tasks[key]
-
-            # running_alone
-            if self.running_alone and "random_scint" not in active_tasks:
-                task = asyncio.create_task(self.random_scintillement())
-                active_tasks["random_scint"] = task
-
-            # starting
-            if self.starting and "demo" not in active_tasks:
-                task = asyncio.create_task(self.demo(
-                    self.buffer_start_scenes))
-                active_tasks["demo"] = task
-
-            # mirroir
-            if self.mirroir and "mirroir" not in active_tasks:
-                task = asyncio.create_task(self.mirroirRun(1))
-                active_tasks["mirroir"] = task
-
-            await asyncio.sleep(0.2)
-
-
-    async def monitor_switches(self, delay_ms=100):
-        """
-        Met à jour les variables selon les GPIO (toutes les `delay_ms`)
-        """
-        while True:
-            self.running_alone = self.pin_running_alone.value() == 0
-            #print(self.pin_running_alone.value())
-            self.starting = self.pin_starting.value() == 0
-            self.mirroir = self.pin_mirroir.value() == 0
-            await asyncio.sleep_ms(delay_ms)
-
-
-    async def run(self):
-        print("ZenAutomate lancé")
-        print(f"[{self.input_obj.name}] cycle...prg run()")
-        # Lancer la surveillance des GPIO
-        asyncio.create_task(self.monitor_switches())
-        tasks = []
-        # Tâches dynamiques réactives
-        tasks.append(asyncio.create_task(self.scene_controller()))
-        tasks.append(asyncio.create_task(self.show(0.05)))
-        await asyncio.gather(*tasks)
